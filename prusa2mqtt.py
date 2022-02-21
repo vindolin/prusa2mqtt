@@ -13,6 +13,7 @@ temp_status_pattern = r'T:(?P<extruder_actual>\d+\.\d) /(?P<extruder_target>\d+\
 def main(args):
     def parseLine(line, mqtt_client):
         res = match(temp_status_pattern, line)
+
         if res:
             if args.discrete_topics:
                 for name, value in res.groupdict().items():
@@ -25,6 +26,10 @@ def main(args):
             print(line.strip())
 
     mqtt_client = mqtt.Client(args.client_id)
+
+    if args.mqtt_username:
+        mqtt_client.username_pw_set(args.mqtt_username, args.mqtt_password)
+
     mqtt_client.connect(args.mqtt_address, args.mqtt_port)
 
     while True:
@@ -33,7 +38,7 @@ def main(args):
                 while True:
                     line = ser.readline().decode('utf-8')
                     if line == 'start\n':  # the printer does not recognise commands before that line
-                        ser.write(b'M155 S4\n')
+                        ser.write(bytearray(f'M155 S{args.check_interval}\n', 'utf-8'))
                     else:
                         parseLine(line, mqtt_client)
         except Exception as err:
@@ -42,12 +47,18 @@ def main(args):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description='Log temperature data from the USB port of a Prusa printer to an MQTT server.')
+    parser = argparse.ArgumentParser(
+        description='Log temperature data from the USB port of a Prusa printer to an MQTT server.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
     parser.add_argument('--topic', help='Topic for the MQTT message.', default='prusa')
     parser.add_argument('--client_id', help='Distinct client ID for the MQTT connection.', default='prusa2mqtt')
+    parser.add_argument('--check_interval', help='Interval in seconds for checking the temperatures.', type=int, default=5)
     parser.add_argument('--serial_port', help='Path to the serial port device.', default='/dev/ttyACM0')
     parser.add_argument('--mqtt_address', help='Address for the MQTT connection.', default='localhost')
     parser.add_argument('--mqtt_port', help='Port for the MQTT connection.', type=int, default=1883)
+    parser.add_argument('--mqtt_username', help='User name for the MQTT connection.', default=None)
+    parser.add_argument('--mqtt_password', help='Password name for the MQTT connection.', default=None)
     parser.add_argument('--discrete_topics', help='Post sensor data to discrete topics instead of one JSON payload.', type=bool, default=False)
 
     args = parser.parse_args()
