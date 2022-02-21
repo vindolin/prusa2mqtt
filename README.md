@@ -2,10 +2,11 @@
 
 Command line tool that parses the USB serial output of a Prusa printer and publishes the sensor values to an MQTT server.
 
+```bash
+prusa2mqtt --help
 ```
 
-prusa2mqtt --help
-
+```
 usage: prusa2mqtt [-h] [--topic TOPIC] [--client_id CLIENT_ID]
                      [--check_interval CHECK_INTERVAL]
                      [--serial_port SERIAL_PORT] [--mqtt_address MQTT_ADDRESS]
@@ -25,8 +26,7 @@ optional arguments:
                         Interval in seconds for checking the temperatures.
                         (default: 5)
   --serial_port SERIAL_PORT
-                        Path to the serial port device. (default:
-                        /dev/ttyACM0)
+                        Path to the serial port device.
   --mqtt_address MQTT_ADDRESS
                         Address for the MQTT connection. (default: localhost)
   --mqtt_port MQTT_PORT

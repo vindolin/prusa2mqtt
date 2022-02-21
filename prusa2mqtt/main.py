@@ -20,7 +20,7 @@ def main():
     parser.add_argument('--topic', help='Topic for the MQTT message.', default='prusa')
     parser.add_argument('--client_id', help='Distinct client ID for the MQTT connection.', default='prusa2mqtt')
     parser.add_argument('--check_interval', help='Interval in seconds for checking the temperatures.', type=int, default=5)
-    parser.add_argument('--serial_port', help='Path to the serial port device.', default='/dev/ttyACM0')
+    parser.add_argument('--serial_port', help='Path to the serial port device.')
     parser.add_argument('--mqtt_address', help='Address for the MQTT connection.', default='localhost')
     parser.add_argument('--mqtt_port', help='Port for the MQTT connection.', type=int, default=1883)
     parser.add_argument('--mqtt_username', help='User name for the MQTT connection.', default=None)
