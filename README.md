@@ -2,6 +2,12 @@
 
 Command line tool that parses the USB serial output of a Prusa printer and publishes the sensor values to an MQTT server.
 
+Install:
+--------
+```bash
+pip install prusa2mqtt
+```
+
 ```bash
 prusa2mqtt --help
 ```
