@@ -1,6 +1,6 @@
 # prusa2mqtt
 
-Command line tool which parses the USB serial output of a Prusa printer and publishes the sensor values to an MQTT server.
+Command line tool that parses the USB serial output of a Prusa printer and publishes the sensor values to an MQTT server.
 
 ```
 usage: prusa2mqtt.py [-h] [--topic TOPIC] [--client_id CLIENT_ID]
