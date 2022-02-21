@@ -18,13 +18,13 @@ Log temperature data from the USB port of a Prusa printer to an MQTT server.
 
 optional arguments:
   -h, --help            show this help message and exit
+  --serial_port SERIAL_PORT
+                        Path to the serial port device. (default: /dev/ttyACM0)
   --topic TOPIC         Topic for the MQTT message. (default: prusa)
   --client_id CLIENT_ID
-                        Distinct client ID for the MQTT connection. (default:
-                        prusa2mqtt)
+                        Distinct client ID for the MQTT connection. (default: prusa2mqtt)
   --check_interval CHECK_INTERVAL
-                        Interval in seconds for checking the temperatures.
-                        (default: 5)
+                        Interval in seconds for checking the temperatures. (default: 5)
   --serial_port SERIAL_PORT
                         Path to the serial port device.
   --mqtt_address MQTT_ADDRESS
@@ -36,6 +36,5 @@ optional arguments:
   --mqtt_password MQTT_PASSWORD
                         Password name for the MQTT connection. (default: None)
   --discrete_topics DISCRETE_TOPICS
-                        Post sensor data to discrete topics instead of one
-                        JSON payload. (default: False)
+                        Post sensor data to discrete topics instead of one JSON payload. (default: False)
 ```
