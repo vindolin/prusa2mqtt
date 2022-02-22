@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from re import match
+import re
 from json import dumps
 import serial
 import sys
@@ -8,9 +8,20 @@ import time
 import paho.mqtt.client as mqtt
 
 PRUSA_BAUDRATE = 115200
+# 'T:26.1 /0.0 B:25.6 /0.0 T0:26.1 /0.0 @:0 B@:0 P:27.3 A:33.8' <- example line
+PATTERN_TEMP_ACTIVE = re.compile(r'T:(?P<extruder_actual>\d+\.\d+) /(?P<extruder_target>\d+\.\d+) B:(?P<bed_actual>\d+\.\d+) /(?P<bed_target>\d+\.\d+) T0:(\d+\.\d+) /(\d+\.\d+) @:(?P<hotend_power>\d+) B@:(?P<bed_power>\d+) P:(?P<pinda>\d+\.\d+) A:(?P<ambient>\d+\.\d+)')
 
-# 'T:26.1 /0.0 B:25.6 /0.0 T0:26.1 /0.0 @:0 B@:0 P:27.3 A:33.8' <- example status line
-temp_status_pattern = r'T:(?P<extruder_actual>\d+\.\d) /(?P<extruder_target>\d+\.\d) B:(?P<bed_actual>\d+\.\d) /(?P<bed_target>\d+\.\d) T0:(\d+\.\d) /(\d+\.\d) @:(?P<hotend_power>\d+) B@:(?P<bed_power>\d+) P:(?P<pinda>\d+\.\d) A:(?P<ambient>\d+\.\d)'
+# 'T:206.65 E:0 B:59.4' <- example line
+PATTERN_TEMP_IDLE = re.compile(r'T:(?P<extruder_actual>\d+\.\d+) E:(?P<e>\d+) B:(?P<bed_actual>\d+\.\d+)')
+
+# 'NORMAL MODE: Percent done: 93; print time remaining in mins: 2; Change in mins: -1' <- example line
+PATTERN_PROGRESS = re.compile(r'\w+ MODE: Percent done: (?P<percent_done>\d+); print time remaining in mins: (?P<mins_remaining>\d+); Change in mins: (?P<change_in_mins>-?\d+)')
+
+PATTERN_TOPICS = {
+    PATTERN_TEMP_ACTIVE: 'temp',
+    PATTERN_TEMP_IDLE: 'temp_idle',
+    PATTERN_PROGRESS: 'progress',
+}
 
 
 def main():
@@ -34,19 +45,24 @@ def main():
     print(f'\n\tSerial: {args.serial_port} -> MQTT: {args.client_id}@{args.mqtt_address}:{args.mqtt_port}/{args.topic}\n')
 
     def parseLine(line, mqtt_client):
-        res = match(temp_status_pattern, line)
+        pattern_found = False
+        for pattern in (PATTERN_TEMP_ACTIVE, PATTERN_TEMP_IDLE, PATTERN_PROGRESS):
 
-        if res:
-            if args.discrete_topics:
-                for name, value in res.groupdict().items():
-                    mqtt_client.publish(f'{args.topic}/{name}', value)
-            else:
-                mqtt_client.publish(f'{args.topic}', dumps(res.groupdict()))
-                print('.', end='')
-                sys.stdout.flush()
+            res = pattern.match(line)
 
-            mqtt_client.loop_start()
-        else:
+            if res:
+                pattern_found = True
+                if args.discrete_topics:
+                    for name, value in res.groupdict().items():
+                        mqtt_client.publish(f'{args.topic}/{PATTERN_TOPICS[pattern]}/{name}', value)
+                else:
+                    mqtt_client.publish(f'{args.topic}/{PATTERN_TOPICS[pattern]}', dumps(res.groupdict()))
+                    print('.', end='')
+                    sys.stdout.flush()
+
+                mqtt_client.loop_start()
+
+        if not pattern_found:
             print(line.strip())
 
     mqtt_client = mqtt.Client(args.client_id)

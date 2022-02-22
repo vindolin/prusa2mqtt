@@ -3,9 +3,9 @@ from setuptools import setup
 
 setup(
     name='prusa2mqtt',
-    version='0.1',
+    version='0.2',
     author='Thomas Schüßler',
-    description='Command line tool that parses the USB serial output of a Prusa printer and publishes the sensor values to an MQTT server.',
+    description='Command line tool that parses the USB serial output of a Prusa printer and publishes the sensor values and progress to an MQTT server.',
     long_description=open('README.md').read(),
     long_description_content_type="text/markdown",
     classifiers=[
@@ -15,7 +15,6 @@ setup(
     ],
     keywords=['3d printing', 'serial', 'prusa', 'mqtt'],
     url='https://github.com/vindolin/prusa2mqtt',
-    author_email='flyingcircus@example.com',
     license='MIT',
     packages=['prusa2mqtt'],
     install_requires=[
