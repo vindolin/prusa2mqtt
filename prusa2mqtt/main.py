@@ -9,6 +9,9 @@ import paho.mqtt.client as mqtt
 
 PRUSA_BAUDRATE = 115200
 # 'T:26.1 /0.0 B:25.6 /0.0 T0:26.1 /0.0 @:0 B@:0 P:27.3 A:33.8' <- example line
+PATTERN_START = re.compile(r'.*start\n')
+PATTERN_END = re.compile(r'.*INT4\n')
+
 PATTERN_TEMP_ACTIVE = re.compile(r'T:(?P<extruder_actual>\d+\.\d+) /(?P<extruder_target>\d+\.\d+) B:(?P<bed_actual>\d+\.\d+) /(?P<bed_target>\d+\.\d+) T0:(\d+\.\d+) /(\d+\.\d+) @:(?P<hotend_power>\d+) B@:(?P<bed_power>\d+) P:(?P<pinda>\d+\.\d+) A:(?P<ambient>\d+\.\d+)')
 
 # 'T:206.65 E:0 B:59.4' <- example line
@@ -63,7 +66,7 @@ def main():
                 mqtt_client.loop_start()
 
         if not pattern_found:
-            print(line.strip())
+            print('-', line.strip(), '-')
 
     mqtt_client = mqtt.Client(args.client_id)
 
@@ -88,12 +91,16 @@ def main():
             with serial.Serial(args.serial_port, PRUSA_BAUDRATE, timeout=None) as ser:
                 while True:
                     line = ser.readline().decode('utf-8')
-                    if line == 'start\n':  # the printer does not recognise commands before that line
+                    if PATTERN_START.match(line):  # the printer does not recognise commands before that line
+                        print('\n------ Printer starting ------\n')
                         ser.write(bytearray(f'M155 S{args.check_interval}\n', 'utf-8'))
+                    elif PATTERN_END.match(line):
+                        print('\n------ Printer shutdown ------\n')
                     else:
                         parseLine(line, mqtt_client)
         except Exception as err:
             print(err)
+
 
 if __name__ == '__main__':
     main()
