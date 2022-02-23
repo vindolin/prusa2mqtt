@@ -69,11 +69,12 @@ def main():
                 mqtt_client.loop_start()
 
         if not pattern_found:
-            print(line.strip())
+            print(f'> {line.strip()}')
 
     # send payload as GCODE to the printer when something arrives on topic/gcode
     def on_message(client, obj, msg):
         gcode = f"{msg.payload.decode('utf-8')}\n"
+        print(f'\n< {gcode}')
         ser.write(bytearray(gcode, 'utf-8'))
 
     mqtt_client = mqtt.Client(args.client_id)

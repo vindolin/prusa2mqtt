@@ -44,3 +44,9 @@ optional arguments:
   --discrete_topics DISCRETE_TOPICS
                         Post sensor data to discrete topics instead of one JSON payload. (default: False)
 ```
+
+Send GCODE over MQTT:
+--------
+```
+You can also send GCODE to your printer if you publish something to $TOPIC/gcode
+```
