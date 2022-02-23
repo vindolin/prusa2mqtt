@@ -29,6 +29,7 @@ PATTERN_TOPICS = {
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(
         description='Log temperature data from the USB port of a Prusa printer to an MQTT server.',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -46,6 +47,8 @@ def main():
     args = parser.parse_args()
 
     print(f'\n\tSerial: {args.serial_port} -> MQTT: {args.client_id}@{args.mqtt_address}:{args.mqtt_port}/{args.topic}\n')
+
+    ser = None  # global to main
 
     def parseLine(line, mqtt_client):
         pattern_found = False
@@ -66,16 +69,23 @@ def main():
                 mqtt_client.loop_start()
 
         if not pattern_found:
-            print('-', line.strip(), '-')
+            print(line.strip())
+
+    # send payload as GCODE to the printer when something arrives on topic/gcode
+    def on_message(client, obj, msg):
+        gcode = f"{msg.payload.decode('utf-8')}\n"
+        ser.write(bytearray(gcode, 'utf-8'))
 
     mqtt_client = mqtt.Client(args.client_id)
 
     if args.mqtt_username:
         mqtt_client.username_pw_set(args.mqtt_username, args.mqtt_password)
-
+    mqtt_client.on_message = on_message
     mqtt_client.connect(args.mqtt_address, args.mqtt_port)
+    mqtt_client.subscribe(f'{args.topic}/gcode', 0)
     mqtt_client.loop_start()
 
+    # try to connect to the MQTT server
     for i in range(30):  # try for 3 seconds
         if mqtt_client.is_connected():
             break
@@ -88,9 +98,12 @@ def main():
 
     while True:
         try:
-            with serial.Serial(args.serial_port, PRUSA_BAUDRATE, timeout=None) as ser:
+            with serial.Serial(args.serial_port, PRUSA_BAUDRATE, timeout=5) as ser:  # timeout is here so the MQTT loop get's called when no serial data is waiting
                 while True:
+                    mqtt_client.loop_start()
                     line = ser.readline().decode('utf-8')
+                    if(line == ''):
+                        continue  # timeout produces empty lines
                     if PATTERN_START.match(line):  # the printer does not recognise commands before that line
                         print('\n------ Printer starting ------\n')
                         ser.write(bytearray(f'M155 S{args.check_interval}\n', 'utf-8'))
