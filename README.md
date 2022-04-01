@@ -2,6 +2,9 @@
 
 Command line tool that parses the USB serial output of a Prusa 3D printer and publishes the sensor values and progress to an MQTT server.
 
+The difference between this script and the MQTT plugin for Octoprint is, that this script only connects once to the /dev/ttyACM0 port and the connection doesn't abort if you power down the printer.
+
+
 Install:
 --------
 ```bash
