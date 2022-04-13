@@ -8,6 +8,7 @@ import time
 import paho.mqtt.client as mqtt
 
 PRUSA_BAUDRATE = 115200
+
 # 'T:26.1 /0.0 B:25.6 /0.0 T0:26.1 /0.0 @:0 B@:0 P:27.3 A:33.8' <- example line
 PATTERN_START = re.compile(r'.*start\n')
 PATTERN_END = re.compile(r'.*INT4\n')
@@ -75,7 +76,10 @@ def main():
     def on_message(client, obj, msg):
         gcode = f"{msg.payload.decode('utf-8')}\n"
         print(f'\n< {gcode}')
-        ser.write(bytearray(gcode, 'utf-8'))
+        try:
+            ser.write(bytearray(gcode, 'utf-8'))
+        except AttributeError:
+            pass  # can happen when there's a retained message before the serial connection was opened
 
     mqtt_client = mqtt.Client(args.client_id)
 
