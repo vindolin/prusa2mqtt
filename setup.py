@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='prusa2mqtt',
-    version='0.4',
+    version='0.5',
     author='Thomas Schüßler',
     description='Command line tool that parses the USB serial output of a Prusa printer and publishes the sensor values and progress to an MQTT server.',
     long_description=open('README.md').read(),

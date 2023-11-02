@@ -21,10 +21,14 @@ PATTERN_TEMP_IDLE = re.compile(r'T:(?P<extruder_actual>\d+\.\d+) E:(?P<e>\d+) B:
 # 'NORMAL MODE: Percent done: 93; print time remaining in mins: 2; Change in mins: -1' <- example line
 PATTERN_PROGRESS = re.compile(r'\w+ MODE: Percent done: (?P<percent_done>\d+); print time remaining in mins: (?P<mins_remaining>\d+); Change in mins: (?P<change_in_mins>-?\d+)')
 
+# > File opened: /m50.gcode Size: 1246085
+PATTERN_FILE_NAME = re.compile(r'File opened\: /(?P<file_name>.+)\.gcode Size');
+
 PATTERN_TOPICS = {
     PATTERN_TEMP_ACTIVE: 'temp',
     PATTERN_TEMP_IDLE: 'temp_idle',
     PATTERN_PROGRESS: 'progress',
+    PATTERN_FILE_NAME: 'file',
 }
 
 
@@ -53,7 +57,7 @@ def main():
 
     def parseLine(line, mqtt_client):
         pattern_found = False
-        for pattern in (PATTERN_TEMP_ACTIVE, PATTERN_TEMP_IDLE, PATTERN_PROGRESS):
+        for pattern in PATTERN_TOPICS.keys():
 
             res = pattern.match(line)
 
@@ -61,15 +65,15 @@ def main():
                 pattern_found = True
                 if args.discrete_topics:
                     for name, value in res.groupdict().items():
-                        mqtt_client.publish(f'{args.topic}/{PATTERN_TOPICS[pattern]}/{name}', value)
+                        mqtt_client.publish(f'{args.topic}/{PATTERN_TOPICS[pattern]}/{name}', value, retain=True)
                 else:
-                    mqtt_client.publish(f'{args.topic}/{PATTERN_TOPICS[pattern]}', dumps(res.groupdict()))
-                    print('.', end='')
-                    sys.stdout.flush()
+                    mqtt_client.publish(f'{args.topic}/{PATTERN_TOPICS[pattern]}', dumps(res.groupdict()), retain=True)
 
                 mqtt_client.loop_start()
 
-        if not pattern_found:
+        if pattern_found:
+            print(f'\033[0;32m> {line.strip()}\033[00m')
+        else:
             print(f'> {line.strip()}')
 
     # send payload as GCODE to the printer when something arrives on topic/gcode
@@ -81,43 +85,51 @@ def main():
         except AttributeError:
             pass  # can happen when there's a retained message before the serial connection was opened
 
-    mqtt_client = mqtt.Client(args.client_id)
-
-    if args.mqtt_username:
-        mqtt_client.username_pw_set(args.mqtt_username, args.mqtt_password)
-    mqtt_client.on_message = on_message
-    mqtt_client.connect(args.mqtt_address, args.mqtt_port)
-    mqtt_client.subscribe(f'{args.topic}/gcode', 0)
-    mqtt_client.loop_start()
-
-    # try to connect to the MQTT server
-    for i in range(30):  # try for 3 seconds
-        if mqtt_client.is_connected():
-            break
-        print('.', end='')
-        sys.stdout.flush()
-        time.sleep(0.1)
-
-    if not mqtt_client.is_connected():
-        sys.exit(f'\nCould not connect to the MQTT server at {args.mqtt_address}:{args.mqtt_port}, please check your parameters.')
-
     while True:
-        try:
-            with serial.Serial(args.serial_port, PRUSA_BAUDRATE, timeout=5) as ser:  # timeout is here so the MQTT loop get's called when no serial data is waiting
-                while True:
-                    mqtt_client.loop_start()
-                    line = ser.readline().decode('utf-8')
-                    if(line == ''):
-                        continue  # timeout produces empty lines
-                    if PATTERN_START.match(line):  # the printer does not recognise commands before that line
-                        print('\n------ Printer starting ------\n')
-                        ser.write(bytearray(f'M155 S{args.check_interval}\n', 'utf-8'))
-                    elif PATTERN_END.match(line):
-                        print('\n------ Printer shutdown ------\n')
-                    else:
-                        parseLine(line, mqtt_client)
-        except Exception as err:
-            print(err)
+        mqtt_client = mqtt.Client(args.client_id)
+
+        if args.mqtt_username:
+            mqtt_client.username_pw_set(args.mqtt_username, args.mqtt_password)
+        mqtt_client.on_message = on_message
+        mqtt_client.connect(args.mqtt_address, args.mqtt_port)
+        mqtt_client.subscribe(f'{args.topic}/gcode', 0)
+        mqtt_client.loop_start()
+
+        # try to connect to the MQTT server
+        for i in range(30):  # try for 3 seconds
+            if mqtt_client.is_connected():
+                break
+            print('.', end='')
+            sys.stdout.flush()
+            time.sleep(0.1)
+
+        if not mqtt_client.is_connected():
+            sys.exit(f'\nCould not connect to the MQTT server at {args.mqtt_address}:{args.mqtt_port}, please check your parameters.')
+
+        # clear the retained filename
+        if args.discrete_topics:
+            mqtt_client.publish(f'{args.topic}/file', dumps({'file_name': ''}), retain=False)
+        else:
+            mqtt_client.publish(f'{args.topic}/file/file_name', '', retain=False)
+        mqtt_client.loop_start()
+
+        while True:
+            try:
+                with serial.Serial(args.serial_port, PRUSA_BAUDRATE, timeout=5) as ser:  # timeout is here so the MQTT loop get's called when no serial data is waiting
+                    while True:
+                        mqtt_client.loop_start()
+                        line = ser.readline().decode('utf-8')
+                        if (line == ''):
+                            continue  # timeout produces empty lines
+                        if PATTERN_START.match(line):  # the printer does not recognise commands before that line
+                            print('\n------ Printer starting ------\n')
+                            ser.write(bytearray(f'M155 S{args.check_interval}\n', 'utf-8'))
+                        elif PATTERN_END.match(line):
+                            print('\n------ Printer shutdown ------\n')
+                        else:
+                            parseLine(line, mqtt_client)
+            except Exception as err:
+                print(err)
 
 
 if __name__ == '__main__':
