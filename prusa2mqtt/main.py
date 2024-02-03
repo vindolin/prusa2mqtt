@@ -130,7 +130,7 @@ def main():
                             parseLine(line, mqtt_client)
             except Exception as err:
                 print(err)
-
+            time.sleep(1)
 
 if __name__ == '__main__':
     main()
